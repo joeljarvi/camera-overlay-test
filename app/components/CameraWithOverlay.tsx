@@ -45,11 +45,14 @@ export default function CameraWithOverlay() {
     // Draw video frame
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
+    // Add custom overlay/filter
+    // Example: semi-transparent red overlay
+    ctx.fillStyle = "rgba(255, 0, 0, 0.8)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.filter = "grayscale(100%)";
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Or apply a filter:
+    // ctx.filter = "grayscale(100%)";
+    // ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const dataUrl = canvas.toDataURL("image/png");
     setCaptured(dataUrl);
