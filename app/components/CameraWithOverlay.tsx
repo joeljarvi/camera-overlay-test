@@ -231,7 +231,7 @@ export default function CameraWithOverlay() {
       </div>
 
       {/* BUTTONS */}
-      <div className="flex gap-3 mt-4">
+      <div className="flex gap-3 fixed bottom-4 left-f z-10">
         <button
           onClick={takePhoto}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg"
@@ -259,7 +259,7 @@ export default function CameraWithOverlay() {
       {captured && (
         <div ref={capturedRef} className="mt-8 w-full text-center">
           <h2 className="text-xl font-semibold mb-3">Your Photo</h2>
-          <img src={captured} className="rounded-lg shadow-lg" alt="Captured" />
+          <img src={captured} className=" shadow-lg" alt="Captured" />
         </div>
       )}
 
