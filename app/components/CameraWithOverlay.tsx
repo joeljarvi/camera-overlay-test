@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export default function CameraWithImprovements() {
+export default function CameraWithOverlay() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const captureCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -14,9 +14,10 @@ export default function CameraWithImprovements() {
     "environment"
   );
   const [flash, setFlash] = useState(false);
+  const [filterOn, setFilterOn] = useState(false);
 
   // -----------------------------------------
-  // Start camera at 1080p
+  // Start camera
   // -----------------------------------------
   async function startCamera(facing: "user" | "environment") {
     try {
@@ -29,12 +30,16 @@ export default function CameraWithImprovements() {
       });
 
       setStream(mediaStream);
-      if (videoRef.current) videoRef.current.srcObject = mediaStream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
     } catch (err) {
       console.error("Camera error:", err);
     }
   }
 
+  // Start on mount
   useEffect(() => {
     startCamera(cameraFacing);
     return () => stream?.getTracks().forEach((t) => t.stop());
@@ -42,25 +47,27 @@ export default function CameraWithImprovements() {
   }, []);
 
   // -----------------------------------------
-  // Live timestamp and watermark overlay
+  // Live overlay timestamp + watermark
   // -----------------------------------------
   useEffect(() => {
     let animationFrame: number;
 
-    const drawOverlay = () => {
+    const renderOverlay = () => {
       const canvas = overlayCanvasRef.current;
       const video = videoRef.current;
-      if (!canvas || !video) return;
 
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+      if (!canvas || !video) {
+        animationFrame = requestAnimationFrame(renderOverlay);
+        return;
+      }
 
+      const ctx = canvas.getContext("2d")!;
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Timestamp (bottom right)
+      // Timestamp
       const timestamp = new Date().toLocaleString();
       ctx.font = `${canvas.width * 0.035}px Sans-Serif`;
       ctx.fillStyle = "white";
@@ -70,37 +77,93 @@ export default function CameraWithImprovements() {
       ctx.shadowBlur = 4;
       ctx.fillText(timestamp, canvas.width - 20, canvas.height - 20);
 
-      // Watermark "JoJo Studio" (bottom left)
+      // Watermark
       ctx.textAlign = "left";
       ctx.fillText("JoJo Studio", 20, canvas.height - 20);
 
-      animationFrame = requestAnimationFrame(drawOverlay);
+      animationFrame = requestAnimationFrame(renderOverlay);
     };
 
-    drawOverlay();
+    renderOverlay();
     return () => cancelAnimationFrame(animationFrame);
   }, []);
 
   // -----------------------------------------
-  // Capture full-resolution photo + flash
+  // Create the retro filter effect on any canvas
+  // -----------------------------------------
+  function applyRetroFilter(
+    ctx: CanvasRenderingContext2D,
+    w: number,
+    h: number
+  ) {
+    const imageData = ctx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      let r = data[i];
+      let g = data[i + 1];
+      let b = data[i + 2];
+
+      // Warm color cast (white balance to yellow)
+      r += 25;
+      g += 15;
+
+      // More saturation (approx. increase)
+      const avg = (r + g + b) / 3;
+      r = r + (r - avg) * 0.4;
+      g = g + (g - avg) * 0.4;
+      b = b + (b - avg) * 0.4;
+
+      // Slight contrast increase
+      r = r * 1.1;
+      g = g * 1.1;
+      b = b * 1.1;
+
+      // Clamp
+      data[i] = Math.min(255, r);
+      data[i + 1] = Math.min(255, g);
+      data[i + 2] = Math.min(255, b);
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    // Soft vignette (1998 feel)
+    const vignette = ctx.createRadialGradient(
+      w / 2,
+      h / 2,
+      w * 0.2,
+      w / 2,
+      h / 2,
+      w * 0.8
+    );
+    vignette.addColorStop(0, "rgba(0,0,0,0)");
+    vignette.addColorStop(1, "rgba(0,0,0,0.25)");
+
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // -----------------------------------------
+  // Flash + Capture
   // -----------------------------------------
   const takePhoto = () => {
     if (!videoRef.current || !captureCanvasRef.current) return;
 
     const video = videoRef.current;
     const canvas = captureCanvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Flash effect
-    setFlash(true);
-    setTimeout(() => setFlash(false), 150);
-
+    const ctx = canvas.getContext("2d")!;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Draw frame
+    // Flash
+    setFlash(true);
+    setTimeout(() => setFlash(false), 150);
+
+    // Draw video frame
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Apply retro filter if enabled
+    if (filterOn) applyRetroFilter(ctx, canvas.width, canvas.height);
 
     // Timestamp
     const timestamp = new Date().toLocaleString();
@@ -116,18 +179,18 @@ export default function CameraWithImprovements() {
     ctx.textAlign = "left";
     ctx.fillText("JoJo Studio", 20, canvas.height - 20);
 
-    // Save image
+    // Save
     const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
     setCaptured(dataUrl);
 
-    // Scroll directly to the photo
+    // Scroll to photo
     setTimeout(() => {
       capturedRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 100);
   };
 
   // -----------------------------------------
-  // Switch camera
+  // Camera switch
   // -----------------------------------------
   const switchCamera = async () => {
     const newFacing = cameraFacing === "user" ? "environment" : "user";
@@ -139,13 +202,27 @@ export default function CameraWithImprovements() {
 
   return (
     <div className="flex flex-col items-center relative w-full max-w-xl mx-auto">
-      {/* FLASH OVERLAY */}
+      {/* FLASH */}
       {flash && (
-        <div className="fixed inset-0 bg-white opacity-90 pointer-events-none z-50 transition-opacity duration-150"></div>
+        <div className="fixed inset-0 bg-white opacity-90 pointer-events-none z-50"></div>
       )}
 
+      {/* VIDEO + OVERLAY */}
       <div className="relative w-full">
-        <video ref={videoRef} autoPlay playsInline className="w-full h-auto" />
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          className={`w-full h-auto ${
+            filterOn ? "filter saturate-150 contrast-125 brightness-110" : ""
+          }`}
+          style={{
+            // slight warm hue in preview
+            filter: filterOn
+              ? "sepia(0.35) saturate(1.6) contrast(1.1) brightness(1.05)"
+              : "none",
+          }}
+        />
 
         <canvas
           ref={overlayCanvasRef}
@@ -153,7 +230,7 @@ export default function CameraWithImprovements() {
         />
       </div>
 
-      {/* Buttons */}
+      {/* BUTTONS */}
       <div className="flex gap-3 mt-4">
         <button
           onClick={takePhoto}
@@ -168,9 +245,17 @@ export default function CameraWithImprovements() {
         >
           Switch Camera
         </button>
+
+        <button
+          onClick={() => setFilterOn(!filterOn)}
+          className={`px-4 py-2 rounded-lg text-white ${
+            filterOn ? "bg-yellow-600" : "bg-gray-600"
+          }`}
+        >
+          {filterOn ? "Filter: ON" : "Filter: OFF"}
+        </button>
       </div>
 
-      {/* Captured image */}
       {captured && (
         <div ref={capturedRef} className="mt-8 w-full text-center">
           <h2 className="text-xl font-semibold mb-3">Your Photo</h2>
