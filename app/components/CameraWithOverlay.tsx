@@ -16,6 +16,42 @@ export default function CameraWithOverlay() {
   const [flash, setFlash] = useState(false);
   const [filterOn, setFilterOn] = useState(false);
 
+  // NEW → Auto-incrementing counter
+  const [photoIndex, setPhotoIndex] = useState(1);
+
+  // -----------------------------------------
+  // Watermark Grid Renderer
+  // -----------------------------------------
+  function drawWatermarkGrid(
+    ctx: CanvasRenderingContext2D,
+    w: number,
+    h: number
+  ) {
+    const cols = 8;
+    const rows = 12;
+    const watermark = "JOJO";
+
+    const cellW = w / cols;
+    const cellH = h / rows;
+
+    ctx.fillStyle = "rgba(255,255,255,0.15)";
+    ctx.font = `${Math.min(cellW, cellH) * 0.5}px Sans-Serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgba(0,0,0,0.3)";
+    ctx.shadowBlur = 2;
+
+    let idx = 0;
+
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const letter = watermark[idx % watermark.length];
+        idx++;
+        ctx.fillText(letter, x * cellW + cellW / 2, y * cellH + cellH / 2);
+      }
+    }
+  }
+
   // -----------------------------------------
   // Start camera
   // -----------------------------------------
@@ -47,7 +83,7 @@ export default function CameraWithOverlay() {
   }, []);
 
   // -----------------------------------------
-  // Live overlay timestamp + watermark
+  // Live overlay (timestamp + grid)
   // -----------------------------------------
   useEffect(() => {
     let animationFrame: number;
@@ -67,7 +103,10 @@ export default function CameraWithOverlay() {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Timestamp
+      // 1. Watermark grid
+      drawWatermarkGrid(ctx, canvas.width, canvas.height);
+
+      // 2. Timestamp
       const timestamp = new Date().toLocaleString();
       ctx.font = `${canvas.width * 0.035}px Sans-Serif`;
       ctx.fillStyle = "white";
@@ -77,71 +116,17 @@ export default function CameraWithOverlay() {
       ctx.shadowBlur = 4;
       ctx.fillText(timestamp, canvas.width - 20, canvas.height - 20);
 
-      // Watermark
+      // 3. Counter (JOJOxxxx)
+      const indexString = String(photoIndex).padStart(4, "0");
       ctx.textAlign = "left";
-      ctx.fillText("JoJo Studio", 20, canvas.height - 20);
+      ctx.fillText(`JOJO${indexString}`, 20, canvas.height - 20);
 
       animationFrame = requestAnimationFrame(renderOverlay);
     };
 
     renderOverlay();
     return () => cancelAnimationFrame(animationFrame);
-  }, []);
-
-  // -----------------------------------------
-  // Create the retro filter effect on any canvas
-  // -----------------------------------------
-  function applyRetroFilter(
-    ctx: CanvasRenderingContext2D,
-    w: number,
-    h: number
-  ) {
-    const imageData = ctx.getImageData(0, 0, w, h);
-    const data = imageData.data;
-
-    for (let i = 0; i < data.length; i += 4) {
-      let r = data[i];
-      let g = data[i + 1];
-      let b = data[i + 2];
-
-      // Warm color cast (white balance to yellow)
-      r += 25;
-      g += 15;
-
-      // More saturation (approx. increase)
-      const avg = (r + g + b) / 3;
-      r = r + (r - avg) * 0.4;
-      g = g + (g - avg) * 0.4;
-      b = b + (b - avg) * 0.4;
-
-      // Slight contrast increase
-      r = r * 1.1;
-      g = g * 1.1;
-      b = b * 1.1;
-
-      // Clamp
-      data[i] = Math.min(255, r);
-      data[i + 1] = Math.min(255, g);
-      data[i + 2] = Math.min(255, b);
-    }
-
-    ctx.putImageData(imageData, 0, 0);
-
-    // Soft vignette (1998 feel)
-    const vignette = ctx.createRadialGradient(
-      w / 2,
-      h / 2,
-      w * 0.2,
-      w / 2,
-      h / 2,
-      w * 0.8
-    );
-    vignette.addColorStop(0, "rgba(0,0,0,0)");
-    vignette.addColorStop(1, "rgba(0,0,0,0.25)");
-
-    ctx.fillStyle = vignette;
-    ctx.fillRect(0, 0, w, h);
-  }
+  }, [photoIndex]);
 
   // -----------------------------------------
   // Flash + Capture
@@ -162,8 +147,8 @@ export default function CameraWithOverlay() {
     // Draw video frame
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Apply retro filter if enabled
-    if (filterOn) applyRetroFilter(ctx, canvas.width, canvas.height);
+    // Grid watermark
+    drawWatermarkGrid(ctx, canvas.width, canvas.height);
 
     // Timestamp
     const timestamp = new Date().toLocaleString();
@@ -175,13 +160,17 @@ export default function CameraWithOverlay() {
     ctx.shadowBlur = 4;
     ctx.fillText(timestamp, canvas.width - 20, canvas.height - 20);
 
-    // Watermark
+    // Counter (JOJOxxxx)
+    const indexString = String(photoIndex).padStart(4, "0");
     ctx.textAlign = "left";
-    ctx.fillText("JoJo Studio", 20, canvas.height - 20);
+    ctx.fillText(`JOJO${indexString}`, 20, canvas.height - 20);
 
     // Save
     const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
     setCaptured(dataUrl);
+
+    // Increment index
+    setPhotoIndex((prev) => prev + 1);
 
     // Scroll to photo
     setTimeout(() => {
@@ -217,7 +206,6 @@ export default function CameraWithOverlay() {
             filterOn ? "filter saturate-150 contrast-125 brightness-110" : ""
           }`}
           style={{
-            // slight warm hue in preview
             filter: filterOn
               ? "sepia(0.35) saturate(1.6) contrast(1.1) brightness(1.05)"
               : "none",
@@ -230,36 +218,29 @@ export default function CameraWithOverlay() {
         />
       </div>
 
-      {/* BUTTONS */}
-      <div className="flex gap-3 fixed bottom-4 left-f z-10">
+      {/* SHUTTER BUTTON */}
+      <div className="flex gap-3 fixed bottom-4 left-1/2 -translate-x-1/2 z-10">
         <button
           onClick={takePhoto}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg"
-        >
-          Take Photo
-        </button>
+          className="w-20 h-20 bg-white border-4 border-gray-300 rounded-full shadow-md active:scale-95 transition"
+        ></button>
+      </div>
 
+      {/* SWITCH CAMERA */}
+      <div className="flex fixed top-4 right-4 z-10">
         <button
           onClick={switchCamera}
           className="px-4 py-2 bg-gray-800 text-white rounded-lg"
         >
           Switch Camera
         </button>
-
-        <button
-          onClick={() => setFilterOn(!filterOn)}
-          className={`px-4 py-2 rounded-lg text-white ${
-            filterOn ? "bg-yellow-600" : "bg-gray-600"
-          }`}
-        >
-          {filterOn ? "Filter: ON" : "Filter: OFF"}
-        </button>
       </div>
 
+      {/* CAPTURED PHOTO */}
       {captured && (
         <div ref={capturedRef} className="mt-8 w-full text-center">
           <h2 className="text-xl font-semibold mb-3">Your Photo</h2>
-          <img src={captured} className=" shadow-lg" alt="Captured" />
+          <img src={captured} className="shadow-lg" alt="Captured" />
         </div>
       )}
 
