@@ -27,15 +27,15 @@ export default function CameraWithOverlay() {
     w: number,
     h: number
   ) {
-    const cols = 8;
-    const rows = 12;
+    const cols = 4;
+    const rows = 6;
     const watermark = "JOJO";
 
     const cellW = w / cols;
     const cellH = h / rows;
 
     ctx.fillStyle = "rgba(255,255,255,0.15)";
-    ctx.font = `${Math.min(cellW, cellH) * 0.5}px Sans-Serif`;
+    ctx.font = `${Math.min(cellW, cellH) * 0.25}px monospace`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.shadowColor = "rgba(0,0,0,0.3)";
