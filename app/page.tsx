@@ -1,9 +1,11 @@
-import CameraWithOverlay from "./components/CameraWithOverlay";
+import AnimatedCirclesOnAtomicPath from "./components/Animation";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 ">
-      <CameraWithOverlay />
+    <div className="flex min-h-screen items-center justify-center ">
+      <div className="">
+        <AnimatedCirclesOnAtomicPath />
+      </div>
     </div>
   );
 }

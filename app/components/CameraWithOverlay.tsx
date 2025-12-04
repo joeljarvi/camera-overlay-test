@@ -14,43 +14,9 @@ export default function CameraWithOverlay() {
     "environment"
   );
   const [flash, setFlash] = useState(false);
-  const [filterOn, setFilterOn] = useState(false);
 
   // NEW → Auto-incrementing counter
   const [photoIndex, setPhotoIndex] = useState(1);
-
-  // -----------------------------------------
-  // Watermark Grid Renderer
-  // -----------------------------------------
-  function drawWatermarkGrid(
-    ctx: CanvasRenderingContext2D,
-    w: number,
-    h: number
-  ) {
-    const cols = 4;
-    const rows = 6;
-    const watermark = "JOJO";
-
-    const cellW = w / cols;
-    const cellH = h / rows;
-
-    ctx.fillStyle = "rgba(255,255,255,0.15)";
-    ctx.font = `${Math.min(cellW, cellH) * 0.25}px monospace`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.shadowColor = "rgba(0,0,0,0.3)";
-    ctx.shadowBlur = 2;
-
-    let idx = 0;
-
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        const letter = watermark[idx % watermark.length];
-        idx++;
-        ctx.fillText(letter, x * cellW + cellW / 2, y * cellH + cellH / 2);
-      }
-    }
-  }
 
   // -----------------------------------------
   // Start camera
@@ -103,9 +69,6 @@ export default function CameraWithOverlay() {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 1. Watermark grid
-      drawWatermarkGrid(ctx, canvas.width, canvas.height);
-
       // 2. Timestamp
       const timestamp = new Date().toLocaleString();
       ctx.font = `${canvas.width * 0.035}px Sans-Serif`;
@@ -146,19 +109,6 @@ export default function CameraWithOverlay() {
 
     // Draw video frame
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Grid watermark
-    drawWatermarkGrid(ctx, canvas.width, canvas.height);
-
-    // Timestamp
-    const timestamp = new Date().toLocaleString();
-    ctx.font = `${canvas.width * 0.035}px Sans-Serif`;
-    ctx.fillStyle = "white";
-    ctx.textAlign = "right";
-    ctx.textBaseline = "bottom";
-    ctx.shadowColor = "rgba(0,0,0,0.7)";
-    ctx.shadowBlur = 4;
-    ctx.fillText(timestamp, canvas.width - 20, canvas.height - 20);
 
     // Counter (JOJOxxxx)
     const indexString = String(photoIndex).padStart(4, "0");
@@ -202,14 +152,7 @@ export default function CameraWithOverlay() {
           ref={videoRef}
           autoPlay
           playsInline
-          className={`w-full h-auto ${
-            filterOn ? "filter saturate-150 contrast-125 brightness-110" : ""
-          }`}
-          style={{
-            filter: filterOn
-              ? "sepia(0.35) saturate(1.6) contrast(1.1) brightness(1.05)"
-              : "none",
-          }}
+          className={`w-full h-auto `}
         />
 
         <canvas
