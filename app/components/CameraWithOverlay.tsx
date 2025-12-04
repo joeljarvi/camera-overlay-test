@@ -69,6 +69,16 @@ export default function CameraWithOverlay() {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // 2. Timestamp
+      const timestamp = new Date().toLocaleString();
+      ctx.font = `${canvas.width * 0.035}px Sans-Serif`;
+      ctx.fillStyle = "white";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "bottom";
+      ctx.shadowColor = "rgba(0,0,0,0.7)";
+      ctx.shadowBlur = 4;
+      ctx.fillText(timestamp, canvas.width - 20, canvas.height - 20);
+
       // 3. Counter (JOJOxxxx)
       const indexString = String(photoIndex).padStart(4, "0");
       ctx.textAlign = "left";
@@ -99,6 +109,16 @@ export default function CameraWithOverlay() {
 
     // Draw video frame
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Timestamp
+    const timestamp = new Date().toLocaleString();
+    ctx.font = `${canvas.width * 0.035}px Sans-Serif`;
+    ctx.fillStyle = "white";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "bottom";
+    ctx.shadowColor = "rgba(0,0,0,0.7)";
+    ctx.shadowBlur = 4;
+    ctx.fillText(timestamp, canvas.width - 20, canvas.height - 20);
 
     // Counter (JOJOxxxx)
     const indexString = String(photoIndex).padStart(4, "0");
